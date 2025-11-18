@@ -1,0 +1,5 @@
+python -m venv <.venv-folder-name>
+source .venv/bin/activate
+pip install 'fastapi[standard]'
+pip install 'uvicorn[standard]'
+pip install sqlalchemy
