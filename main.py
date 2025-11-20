@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status, Path
 from typing import Annotated
 from sqlalchemy.orm import Session
 from database import db, models
@@ -26,10 +26,18 @@ def get_db():
 # FastAPI is able to call "next(get_db())" in order to get the Session object, and getting to the StopIteration exception, so that it can continue to execute dataB.close()
 db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
 
-@app.get("/")
+@app.get("/", status_code=status.HTTP_200_OK)
 async def read_all(db_session: db_dependency):
-    # SELECT * FROM todos;
+    # all() -> SELECT * FROM todos;
     return db_session.query(models.Todos).all()
+
+@app.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
+async def read_one(db_session: db_dependency, todo_id: int = Path(gt=0)):
+    # filter() -> ... WHERE id = todo_id
+    todo_model = db_session.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    if todo_model is not None:
+        return todo_model
+    raise HTTPException(status_code=404, detail="Todo not found")
 
 
 """
