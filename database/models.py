@@ -1,6 +1,37 @@
 from database import db
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from pydantic import BaseModel, Field
+
+
+class User(db.Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True)
+    username = Column(String, unique=True)
+    password = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    is_active = Column(Boolean, default=True)
+    role = Column(String)
+
+    """
+    SQLITE3 SCHEMA:
+    CREATE TABLE users (
+        id INTEGER NOT NULL,
+        email VARCHAR,
+        username VARCHAR,
+        password VARCHAR,
+        first_name VARCHAR,
+        last_name VARCHAR,
+        is_active BOOLEAN,
+        role VARCHAR,
+        PRIMARY KEY (id),
+        UNIQUE (email),
+        UNIQUE (username)
+    );
+    CREATE INDEX ix_users_id ON users (id);
+    """
 
 
 class Todos(db.Base):
@@ -12,6 +43,23 @@ class Todos(db.Base):
     description = Column(String)
     priority = Column(Integer)
     completed = Column(Boolean, default=False)
+    owner_id = Column(Integer, ForeignKey('users.id'))
+
+    """
+    SQLITE3 SCHEMA:
+    CREATE TABLE todos (
+        id INTEGER NOT NULL,
+        title VARCHAR,
+        description VARCHAR,
+        priority INTEGER,
+        completed BOOLEAN,
+        owner_id INTEGER,
+        PRIMARY KEY (id),
+        FOREIGN KEY(owner_id) REFERENCES users (id)
+    );
+    CREATE INDEX ix_todos_id ON todos (id);
+    """
+
 
 # TodoValidator inherits from BaseModel, in order to implement data validation
 class TodoValidator(BaseModel):
