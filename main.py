@@ -39,6 +39,12 @@ async def read_one(db_session: db_dependency, todo_id: int = Path(gt=0)):
         return todo_model
     raise HTTPException(status_code=404, detail="Todo not found")
 
+@app.post("/todo", status_code=status.HTTP_201_CREATED)
+async def create_todo(db_session: db_dependency, todo_validator: models.TodoValidator):
+    # **: passing key-values to Todos as parameters
+    todo_model = models.Todos(**todo_validator.model_dump())
+    db_session.add(todo_model)
+    db_session.commit()
 
 """
 # Understanding the "get_db" function
