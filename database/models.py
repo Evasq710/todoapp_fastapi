@@ -1,9 +1,9 @@
-from .db import Base
+from database import db
 from sqlalchemy import Column, Integer, String, Boolean
 from pydantic import BaseModel, Field
 
 
-class Todos(Base):
+class Todos(db.Base):
     __tablename__ = "todos"
 
     # Is index=True really necessary when we are defining a primary key?
