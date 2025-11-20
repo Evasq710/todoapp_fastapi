@@ -46,6 +46,27 @@ async def create_todo(db_session: db_dependency, todo_validator: models.TodoVali
     db_session.add(todo_model)
     db_session.commit()
 
+@app.put("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def update_todo(db_session: db_dependency,
+                      todo_validator: models.TodoValidator,
+                      todo_id: int = Path(gt=0)):
+    # filter() -> ... WHERE id = todo_id
+    todo_model = db_session.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    if todo_model is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+
+    # We are sure that our todo_validator has all the todo_object attributes, because FastAPI is validating it with pydantic, thanks to the use of BaseModel
+    # If the request doesn't have all the required attributes, FastAPI responds with a 422 status code (Unprocessable Content)
+    todo_model.title = todo_validator.title
+    todo_model.description = todo_validator.description
+    todo_model.priority = todo_validator.priority
+    todo_model.completed = todo_validator.completed
+
+    # We have to use the same object, so our ORM understands that we are updating a record
+    db_session.add(todo_model)
+    db_session.commit()
+
+
 """
 # Understanding the "get_db" function
 
