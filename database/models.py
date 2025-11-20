@@ -3,13 +3,13 @@ from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from pydantic import BaseModel, Field
 
 
-class User(db.Base):
+class Users(db.Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True)
     username = Column(String, unique=True)
-    password = Column(String)
+    hashed_password = Column(String) # password already hashed
     first_name = Column(String)
     last_name = Column(String)
     is_active = Column(Boolean, default=True)
@@ -21,7 +21,7 @@ class User(db.Base):
         id INTEGER NOT NULL,
         email VARCHAR,
         username VARCHAR,
-        password VARCHAR,
+        hashed_password VARCHAR,
         first_name VARCHAR,
         last_name VARCHAR,
         is_active BOOLEAN,
@@ -32,6 +32,14 @@ class User(db.Base):
     );
     CREATE INDEX ix_users_id ON users (id);
     """
+
+class UserValidator(BaseModel):
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    password: str # as plain text
+    role: str
 
 
 class Todos(db.Base):
