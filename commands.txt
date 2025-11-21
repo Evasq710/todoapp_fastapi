@@ -3,3 +3,5 @@ source .venv/bin/activate
 pip install 'fastapi[standard]'
 pip install 'uvicorn[standard]'
 pip install sqlalchemy
+pip install passlib
+pip install bcrypt==4.0.1
