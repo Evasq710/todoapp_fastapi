@@ -41,6 +41,20 @@ class UserValidator(BaseModel):
     password: str # as plain text
     role: str
 
+    # This will be added to Swagger documentation > Request body > Example value
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "username": "evasquez",
+                "email": "elias@test.com",
+                "first_name": "Elias",
+                "last_name": "Vasquez",
+                "password": "test1234",
+                "role": "admin"
+            }
+        }
+    }
+
 
 class Todos(db.Base):
     __tablename__ = "todos"
