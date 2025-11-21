@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from typing import Annotated
 from sqlalchemy.orm import Session
@@ -24,6 +25,14 @@ def get_db():
 # Annotated[Session, Depends(get_db)] indicates that the Session type should be resolved using the get_db dependency
 db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
 
+
+def authenticate_user(username: str, password: str, db_session: Session) -> bool:
+    user: models.Users | None = db_session.query(models.Users).filter(models.Users.username == username).first()
+    if user is None:
+        return False
+    return bcrypt_context.verify(password, user.hashed_password)
+
+
 @router.post("/auth", status_code=status.HTTP_201_CREATED)
 async def create_user(db_session: db_dependency, user_validator: models.UserValidator):
     user_model = models.Users(
@@ -43,3 +52,16 @@ async def create_user(db_session: db_dependency, user_validator: models.UserVali
         db_session.rollback()
         print('Unexpected Error:', str(err))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(err))
+
+# OAuth 2.0: an open standard for authorization that allows a third-party app to access limited user data, without exposing the user's password.
+# OAuth2PasswordRequestForm is a CLASS DEPENDENCY provided in FastAPI, for handling form-based authentication. That's why we use Depends(). It declares a FastAPI dependency.
+@router.post("/token", status_code=status.HTTP_200_OK)
+async def login_for_access_token(db_session: db_dependency,
+                                 form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    # form_data: {'grant_type', 'username', 'password', 'scopes', 'client_id', 'client_secret'}
+
+    if authenticate_user(form_data.username, form_data.password, db_session):
+        return 'Valid authentication'
+
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed authentication")
+
