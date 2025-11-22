@@ -55,6 +55,9 @@ class UserValidator(BaseModel):
         }
     }
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 class Todos(db.Base):
     __tablename__ = "todos"

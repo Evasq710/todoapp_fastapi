@@ -1,3 +1,5 @@
+import os, jwt
+from datetime import timedelta, datetime, timezone
 from fastapi import APIRouter, status, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
@@ -7,6 +9,11 @@ from sqlalchemy.exc import IntegrityError
 from database import models, db
 
 router = APIRouter()
+
+# Variables for JWTs creation
+# openssl rand -hex 32 | pbcopy
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -26,11 +33,20 @@ def get_db():
 db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
 
 
-def authenticate_user(username: str, password: str, db_session: Session) -> bool:
+def authenticate_user(username: str, password: str, db_session: Session) -> models.Users | None:
     user: models.Users | None = db_session.query(models.Users).filter(models.Users.username == username).first()
-    if user is None:
-        return False
-    return bcrypt_context.verify(password, user.hashed_password)
+    if user is None or not bcrypt_context.verify(password, user.hashed_password):
+        return None
+    return user
+
+def create_access_token(username: str, user_id: int, expires_delta: timedelta) -> str:
+    # JWT PAYLOAD
+    to_encode = {
+        'sub': username,
+        'id': user_id,
+        'exp': datetime.now(timezone.utc) + expires_delta
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 @router.post("/auth", status_code=status.HTTP_201_CREATED)
@@ -55,13 +71,26 @@ async def create_user(db_session: db_dependency, user_validator: models.UserVali
 
 # OAuth 2.0: an open standard for authorization that allows a third-party app to access limited user data, without exposing the user's password.
 # OAuth2PasswordRequestForm is a CLASS DEPENDENCY provided in FastAPI, for handling form-based authentication. That's why we use Depends(). It declares a FastAPI dependency.
-@router.post("/token", status_code=status.HTTP_200_OK)
+# The response_model allows Swagger to add documentation of the endpoint response
+@router.post("/token", response_model=models.Token, status_code=status.HTTP_200_OK)
 async def login_for_access_token(db_session: db_dependency,
                                  form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     # form_data: {'grant_type', 'username', 'password', 'scopes', 'client_id', 'client_secret'}
 
-    if authenticate_user(form_data.username, form_data.password, db_session):
-        return 'Valid authentication'
+    if SECRET_KEY is None:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not validate credentials due to an internal error")
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed authentication")
+    user = authenticate_user(form_data.username, form_data.password, db_session)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed authentication")
+
+    token = create_access_token(user.username, user.id, timedelta(minutes=15))
+
+    """
+    Bearer Authentication:
+    When a user or system presents a bearer token to access a resource, they don't need to provide any other form of identification.
+    Whoever "bears" the token can access the associated resources, making it crucial to protect the token.
+    """
+    return {'access_token': token, 'token_type': 'bearer'}
+
 

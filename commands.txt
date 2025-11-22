@@ -6,3 +6,4 @@ pip install sqlalchemy
 pip install passlib
 pip install bcrypt==4.0.1
 pip install python-multipart # check if it isn't already installed
+pip install 'pyjwt[crypto]'
