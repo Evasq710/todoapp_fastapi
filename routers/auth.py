@@ -1,7 +1,7 @@
 import os, jwt
 from datetime import timedelta, datetime, timezone
 from fastapi import APIRouter, status, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from passlib.context import CryptContext
 from typing import Annotated
 from sqlalchemy.orm import Session
@@ -16,6 +16,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# OAuth2PasswordBearer is a security dependency that handles OAuth2 token authentication using the password flow.
+# It tells the application to expect a token in the Authorization: Bearer <token> header
+# It also configures the OpenAPI schema and documentation to include an "Authorize" button for testing.
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
 
 # DEPENDENCY FUNCTION
 # When the function is invoked by FastAPI, the returned value is provided to the route handler
@@ -48,6 +53,24 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta) -
     }
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+# Annotated[str, Depends(oauth2_bearer)] tells the application to get the token in the Authorization: Bearer <token> header
+async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get('sub')
+        user_id: int = payload.get('id')
+        if username is None or user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+
+        return {'username': username, 'user_id': user_id}
+    # except jwt.ExpiredSignatureError: # ExpiredSignatureError < DecodeError < InvalidTokenError < PyJWTError < Exception
+    # except jwt.InvalidTokenError: # InvalidTokenError < PyJWTError < Exception
+    except jwt.PyJWTError as err: # PyJWTError < Exception
+        print('JWT Error:', str(err))
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate token. Error: {str(err)}")
+    except Exception as err:
+        print('Unexpected Error:', str(err))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(err))
 
 @router.post("/auth", status_code=status.HTTP_201_CREATED)
 async def create_user(db_session: db_dependency, user_validator: models.UserValidator):
