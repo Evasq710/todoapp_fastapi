@@ -13,7 +13,8 @@ class Users(db.Base):
     first_name = Column(String)
     last_name = Column(String)
     is_active = Column(Boolean, default=True)
-    role = Column(String)
+    # default -> client side (python) | server_default -> server side (database default)
+    role = Column(String, default="user") # role: str, TODO: user roles as strings separated by spaces
 
     """
     SQLITE3 SCHEMA:
@@ -39,7 +40,6 @@ class UserValidator(BaseModel):
     first_name: str
     last_name: str
     password: str # as plain text
-    role: str
 
     # This will be added to Swagger documentation > Request body > Example value
     model_config = {
@@ -49,8 +49,7 @@ class UserValidator(BaseModel):
                 "email": "elias@test.com",
                 "first_name": "Elias",
                 "last_name": "Vasquez",
-                "password": "test1234",
-                "role": "admin"
+                "password": "test1234"
             }
         }
     }

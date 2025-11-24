@@ -29,20 +29,20 @@ def get_db():
 db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
 
 # Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_current_user function.
-# The get_current_user function gets the JWT in the Authorization header, validates it and returns the username and user_id if valid.
+# The get_current_user function gets the JWT in the Authorization header, validates it and returns the username, user_id and user_role if valid.
 # If something is wrong with the JWT, the function will raise an exception that is going to be handled by FastAPI.
 user_dependency: type[dict] = Annotated[dict, Depends(get_current_user)]
 
 @router.get("/", status_code=status.HTTP_200_OK)
 async def read_all(user_data: user_dependency, db_session: db_dependency):
     # If the code enters here, the app was able to obtain the user data from a valid JWT, thanks to the user_dependency
-    # user_data { 'username', 'user_id' }
+    # user_data { 'username', 'user_id', 'user_role' }
     return db_session.query(models.Todos).filter(models.Todos.owner_id == user_data.get("user_id")).all()
 
 @router.get("/{todo_id}", status_code=status.HTTP_200_OK)
 async def read_one(user_data: user_dependency, db_session: db_dependency, todo_id: int = Path(gt=0)):
     # If the code enters here, the app was able to obtain the user data from a valid JWT, thanks to the user_dependency
-    # user_data { 'username', 'user_id' }
+    # user_data { 'username', 'user_id', 'user_role' }
     todo_model = (db_session.query(models.Todos)
                   .filter(and_(models.Todos.id == todo_id, models.Todos.owner_id == user_data.get("user_id")))
                   .first())
@@ -54,7 +54,7 @@ async def read_one(user_data: user_dependency, db_session: db_dependency, todo_i
 async def create_todo(db_session: db_dependency, user_data: user_dependency,
                       todo_validator: models.TodoValidator):
     # If the code enters here, it means that the app was able to obtain the user data from a valid JWT, thanks to the user_dependency
-    # user_data { 'username', 'user_id' }
+    # user_data { 'username', 'user_id', 'user_role' }
     # **: passing key-values to Todos as parameters
     todo_model = models.Todos(
         owner_id=user_data.get("user_id"),
@@ -68,7 +68,7 @@ async def update_todo(user_data: user_dependency, db_session: db_dependency,
                       todo_validator: models.TodoValidator,
                       todo_id: int = Path(gt=0)):
     # If the code enters here, the app was able to obtain the user data from a valid JWT, thanks to the user_dependency
-    # user_data { 'username', 'user_id' }
+    # user_data { 'username', 'user_id', 'user_role' }
     todo_model = (db_session.query(models.Todos)
                   .filter(and_(models.Todos.id == todo_id, models.Todos.owner_id == user_data.get("user_id")))
                   .first())
@@ -89,7 +89,7 @@ async def update_todo(user_data: user_dependency, db_session: db_dependency,
 @router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_todo(user_data: user_dependency, db_session: db_dependency, todo_id: int = Path(gt=0)):
     # If the code enters here, the app was able to obtain the user data from a valid JWT, thanks to the user_dependency
-    # user_data { 'username', 'user_id' }
+    # user_data { 'username', 'user_id', 'user_role' }
     todo_model = (db_session.query(models.Todos)
                   .filter(and_(models.Todos.id == todo_id, models.Todos.owner_id == user_data.get("user_id")))
                   .first())
