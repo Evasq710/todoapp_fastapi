@@ -39,7 +39,7 @@ class UserValidator(BaseModel):
     email: str
     first_name: str
     last_name: str
-    password: str # as plain text
+    password: str = Field(min_length=6) # as plain text
 
     # This will be added to Swagger documentation > Request body > Example value
     model_config = {
@@ -53,6 +53,10 @@ class UserValidator(BaseModel):
             }
         }
     }
+
+class UserVerification(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=6)
 
 class Token(BaseModel):
     access_token: str
