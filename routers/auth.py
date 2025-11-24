@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database import models, db
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"],
+)
 
 # Variables for JWTs creation
 # openssl rand -hex 32 | pbcopy
@@ -20,7 +23,9 @@ bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2PasswordBearer is a security dependency that handles OAuth2 token authentication using the password flow.
 # It tells the application to expect a token in the Authorization: Bearer <token> header
 # It also configures the OpenAPI schema and documentation to include an "Authorize" button for testing.
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
+# The tokenUrl specifies the endpoint where the client should send the username and password to obtain an access token.
+# When a user interacts with the Swagger UI and enters their credentials, the OAuth2PasswordBearer logic uses this tokenUrl to send a POST request with those credentials to that specific endpoint to retrieve the bearer token.
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 # DEPENDENCY FUNCTION
 # When the function is invoked by FastAPI, the returned value is provided to the route handler
@@ -72,7 +77,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         print('Unexpected Error:', str(err))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(err))
 
-@router.post("/auth", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user(db_session: db_dependency, user_validator: models.UserValidator):
     user_model = models.Users(
         is_active=True, # added attribute that does not exist in UserValidator
