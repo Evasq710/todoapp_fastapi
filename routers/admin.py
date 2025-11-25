@@ -29,7 +29,7 @@ user_dependency: type[dict] = Annotated[dict, Depends(get_current_user)]
 
 
 @router.get("/todo", status_code=status.HTTP_200_OK)
-async def read_all(user_data: user_dependency, db_session: db_dependency):
+async def get_all_todos(user_data: user_dependency, db_session: db_dependency):
     if user_data.get("user_role") != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to perform this action")
 
@@ -46,3 +46,10 @@ async def delete_todo(user_data: user_dependency, db_session: db_dependency, tod
 
     db_session.delete(todo_model)
     db_session.commit()
+
+@router.get("/user", status_code=status.HTTP_200_OK)
+async def get_all_users(user_data: user_dependency, db_session: db_dependency):
+    if user_data.get("user_role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to perform this action")
+
+    return db_session.query(models.Users).all()
