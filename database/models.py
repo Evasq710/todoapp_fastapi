@@ -58,8 +58,10 @@ class UserVerification(BaseModel):
     old_password: str
     new_password: str = Field(min_length=6)
 
-class Token(BaseModel):
+class TokenResponse(BaseModel):
+    message: str
     access_token: str
+    refresh_token: str
     token_type: str
 
 class Todos(db.Base):
