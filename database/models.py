@@ -1,8 +1,8 @@
 from database import db
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime
 from pydantic import BaseModel, Field
 
-
+### USERS ###
 class Users(db.Base):
     __tablename__ = "users"
 
@@ -58,12 +58,39 @@ class UserVerification(BaseModel):
     old_password: str
     new_password: str = Field(min_length=6)
 
+
+### TOKENS ###
+class RefreshTokens(db.Base):
+    __tablename__ = "refresh_tokens"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id: int = Column(Integer, ForeignKey('users.id'), index=True)
+    refresh_token = Column(String, index=True, unique=True)
+    expires_at = Column(DateTime)
+
+    """
+    SQLITE3 SCHEMA:
+    CREATE TABLE refresh_tokens (
+        id INTEGER NOT NULL,
+        user_id INTEGER,
+        refresh_token VARCHAR,
+        expires_at DATETIME,
+        PRIMARY KEY (id),
+        FOREIGN KEY(user_id) REFERENCES users (id)
+    );
+    CREATE INDEX ix_refresh_tokens_id ON refresh_tokens (id);
+    CREATE UNIQUE INDEX ix_refresh_tokens_refresh_token ON refresh_tokens (refresh_token);
+    CREATE INDEX ix_refresh_tokens_user_id ON refresh_tokens (user_id);
+    """
+
+
 class TokenResponse(BaseModel):
     message: str
     access_token: str
     refresh_token: str
     token_type: str
 
+
+### USERS ###
 class Todos(db.Base):
     __tablename__ = "todos"
 
