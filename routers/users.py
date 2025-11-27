@@ -3,7 +3,7 @@ from typing import Annotated
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from database import db, models
-from routers.auth import get_current_user
+from utils.tokens import get_logged_in_user
 
 router = APIRouter(
     prefix="/user",
@@ -12,23 +12,14 @@ router = APIRouter(
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# DEPENDENCY FUNCTION
-# When the function is invoked by FastAPI, the returned value is provided to the route handler
-def get_db():
-    dataB = db.SessionLocal() # getting the Session object, that is bound to our db.engine
-    try:
-        yield dataB
-    finally:
-        dataB.close()
-
 # Annotated[T, x]: T is the base type, x is the metadata. If the tool do not have logic to interpret x, it is treated simply as T
 # Annotated[Session, Depends(get_db)] indicates that the Session type should be resolved using the get_db dependency
-db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
+db_dependency: type[Session] = Annotated[Session, Depends(db.get_db)]
 
-# Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_current_user function.
-# The get_current_user function gets the JWT in the Authorization header, validates it and returns the username, user_id and user_role if valid.
+# Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_logged_in_user function.
+# The get_logged_in_user function gets the JWT in the Authorization header, validates it and returns the username, user_id and user_role if valid.
 # If something is wrong with the JWT, the function will raise an exception that is going to be handled by FastAPI.
-user_dependency: type[dict] = Annotated[dict, Depends(get_current_user)]
+user_dependency: type[dict] = Annotated[dict, Depends(get_logged_in_user)]
 
 
 @router.get("/", status_code=status.HTTP_200_OK)

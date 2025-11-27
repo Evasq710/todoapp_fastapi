@@ -3,35 +3,24 @@ from typing import Annotated
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from database import db, models
-from routers.auth import get_current_user
+from utils.tokens import get_logged_in_user
 
 router = APIRouter(
     prefix="/todo",
     tags=["todo"]
 )
 
-# DEPENDENCY FUNCTION
-# When the function is invoked by FastAPI, the returned value is provided to the route handler
-def get_db():
-    dataB = db.SessionLocal() # getting the Session object, that is bound to our db.engine
-    try:
-        print('Returning a Session object when generator is called...')
-        yield dataB
-    finally:
-        print('Closing the Session object...')
-        dataB.close()
-
 # Annotated: Provides a way to add context-specific metadata to existing types without altering the type itself.
 # Annotated[T, x]: T is the base type, x is the metadata. If the tool do not have logic to interpret x, it is treated simply as T
 # FastAPI use Annotated to specify dependencies for function parameters.
 # Annotated[Session, Depends(get_db)] indicates that the Session type should be resolved using the get_db dependency
 # FastAPI is able to call "next(get_db())" in order to get the Session object, and getting to the StopIteration exception, so that it can continue to execute dataB.close()
-db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
+db_dependency: type[Session] = Annotated[Session, Depends(db.get_db)]
 
-# Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_current_user function.
-# The get_current_user function gets the JWT in the Authorization header, validates it and returns the username, user_id and user_role if valid.
+# Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_logged_in_user function.
+# The get_logged_in_user function gets the JWT in the Authorization header, validates it and returns the username, user_id and user_role if valid.
 # If something is wrong with the JWT, the function will raise an exception that is going to be handled by FastAPI.
-user_dependency: type[dict] = Annotated[dict, Depends(get_current_user)]
+user_dependency: type[dict] = Annotated[dict, Depends(get_logged_in_user)]
 
 @router.get("/", status_code=status.HTTP_200_OK)
 async def read_all(user_data: user_dependency, db_session: db_dependency):
