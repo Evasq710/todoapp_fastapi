@@ -18,3 +18,12 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # The binding with our engine and its creation occurs in main.py with:
 # Base.metadata.create_all(bind=engine)
 Base = declarative_base()
+
+# DEPENDENCY FUNCTION
+# When the function is invoked by FastAPI, the returned value is provided to the route handler
+def get_db():
+    database_session = SessionLocal() # getting the Session object, that is bound to our db.engine
+    try:
+        yield database_session
+    finally:
+        database_session.close()

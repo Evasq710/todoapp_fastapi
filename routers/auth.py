@@ -1,48 +1,37 @@
-import os, uuid, jwt
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta
 from fastapi import APIRouter, status, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 from passlib.context import CryptContext
 from typing import Annotated
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from database import models, db
+from utils import  tokens
 
 router = APIRouter(
-    prefix="/auth",
+    prefix=tokens.PREFIX,
     tags=["auth"],
 )
 
 # Variables for JWTs creation
-# openssl rand -hex 32 | pbcopy
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+ACCESS_TOKEN_EXPIRE_MINUTES = 10
 REFRESH_TOKEN_EXPIRE_DAYS = 2
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# OAuth2PasswordBearer is a security dependency that handles OAuth2 token authentication using the password flow.
-# It tells the application to expect a token in the Authorization: Bearer <token> header
-# It also configures the OpenAPI schema and documentation to include an "Authorize" button for testing.
-# The tokenUrl specifies the endpoint where the client should send the username and password to obtain an access token.
-# When a user interacts with the Swagger UI and enters their credentials, the OAuth2PasswordBearer logic uses this tokenUrl to send a POST request with those credentials to that specific endpoint to retrieve the bearer token.
-oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
-
-# DEPENDENCY FUNCTION
-# When the function is invoked by FastAPI, the returned value is provided to the route handler
-def get_db():
-    dataB = db.SessionLocal() # getting the Session object, that is bound to our db.engine
-    try:
-        print('Returning a Session object when generator is called...')
-        yield dataB
-    finally:
-        print('Closing the Session object...')
-        dataB.close()
-
 # Annotated[T, x]: T is the base type, x is the metadata. If the tool do not have logic to interpret x, it is treated simply as T
 # Annotated[Session, Depends(get_db)] indicates that the Session type should be resolved using the get_db dependency
-db_dependency: type[Session] = Annotated[Session, Depends(get_db)]
+db_dependency: type[Session] = Annotated[Session, Depends(db.get_db)]
+
+
+# Every time this is used as a type, FastAPI will interpret it as a dependency, and will call the get_user_from_refresh_token function.
+# The get_user_from_refresh_token function do the following things:
+# - Gets the JWT in the Authorization header
+# - Validates it and deletes it from the database
+# - Returns the JWT user_data
+# - If the refresh token is not in the database, it is considered INVALID
+# If something is wrong with the JWT, the function will raise an exception that is going to be handled by FastAPI.
+token_dependency: type[dict] = Annotated[dict, Depends(tokens.get_user_from_refresh_token)]
 
 
 def authenticate_user(username: str, password: str, db_session: Session) -> models.Users | None:
@@ -50,50 +39,6 @@ def authenticate_user(username: str, password: str, db_session: Session) -> mode
     if user is None or not bcrypt_context.verify(password, user.hashed_password):
         return None
     return user
-
-def create_jwt_token(user: models.Users, expires_delta: timedelta, is_refresh_token: bool = False) -> str:
-    # JWT PAYLOAD
-    to_encode = {
-        # Registered Claims
-        'jti': str(uuid.uuid4()), # Universally Unique Identifier (UUID, 128-bit)
-        'sub': user.username,
-        'exp': datetime.now(timezone.utc) + expires_delta,
-        # Custom Claims
-        'refresh': is_refresh_token,
-        'user': {
-            'id': user.id,
-            'role': user.role,
-            # 'roles': " ".join(roles), # roles that were received in the form data
-        }
-    }
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-# Annotated[str, Depends(oauth2_bearer)] tells the application to get the token in the Authorization: Bearer <token> header
-async def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    # except jwt.ExpiredSignatureError: # ExpiredSignatureError < DecodeError < InvalidTokenError < PyJWTError < Exception
-    # except jwt.InvalidTokenError: # InvalidTokenError < PyJWTError < Exception
-    except jwt.PyJWTError as err: # PyJWTError < Exception
-        print('JWT Error:', str(err))
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate token. Error: {str(err)}")
-    except Exception as err:
-        print('Unexpected Error:', str(err))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(err))
-
-    # Making sure that this is an ACCESS TOKEN, not a REFRESH TOKEN
-    if payload.get('refresh') is True:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Provide an access token")
-
-    user_data: dict = payload.get('user')
-    if user_data is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
-
-    username: str = payload.get('sub')
-    user_id: int = user_data.get('id')
-    user_role: str = user_data.get('role')
-    return {'username': username, 'user_id': user_id, 'user_role': user_role}
-
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_user(db_session: db_dependency, user_validator: models.UserValidator):
@@ -120,13 +65,10 @@ async def create_user(db_session: db_dependency, user_validator: models.UserVali
 # OAuth 2.0: an open standard for authorization that allows a third-party app to access limited user data, without exposing the user's password.
 # OAuth2PasswordRequestForm is a CLASS DEPENDENCY provided in FastAPI, for handling form-based authentication. That's why we use Depends(). It declares a FastAPI dependency.
 # The response_model allows Swagger to add documentation of the endpoint response
-@router.post("/token", response_model=models.TokenResponse, status_code=status.HTTP_200_OK)
+@router.post(tokens.TOKEN_URL, response_model=models.TokenResponse, status_code=status.HTTP_200_OK)
 async def login_for_access_token(db_session: db_dependency,
                                  form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     # form_data: {'grant_type', 'username', 'password', 'scopes', 'client_id', 'client_secret'}
-
-    if SECRET_KEY is None:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not validate credentials due to an internal error")
 
     user = authenticate_user(form_data.username, form_data.password, db_session)
     if user is None:
@@ -134,19 +76,25 @@ async def login_for_access_token(db_session: db_dependency,
 
     # FLOW 1, ASSUMING THAT THE USER SEND THE ROLE(S) THROUGH THE FORM DATA
     # For this, we would have to add valid scopes to oauth2_bearer, in order to enable the scopes selection on the Swagger documentation
-    """
-    # Validating if user selected an unauthorized role
-    user_roles = set(user.role.split(' ')) # user roles are divided by spaces
-    form_scopes = set(form_data.scopes) # form_data.scopes come in the form of a list[str]
-    if not form_scopes.issubset(user_roles):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Unauthorized role(s)")
-    
-    # create_jwt_token would need to receive the form_scopes set, to then send them in the JWT, separated by spaces 
-    """
 
     # FLOW 2, SENDING THE ROLE THAT THE USER ALREADY HAS IN THE DATABASE
-    access_token = create_jwt_token(user, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_jwt_token(user, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS), is_refresh_token=True)
+    user_data = {
+        'username': user.username,
+        'user_id': user.id,
+        'user_role': user.role,
+    }
+
+    access_token = tokens.create_jwt(
+        user_data=user_data,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        db_session=db_session
+    )
+    refresh_token = tokens.create_jwt(
+        user_data=user_data,
+        expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        db_session=db_session,
+        is_refresh_token=True
+    )
 
     """
     Bearer Authentication:
@@ -160,4 +108,27 @@ async def login_for_access_token(db_session: db_dependency,
         'token_type': 'bearer'
     }
 
+@router.get(tokens.REFRESH_URL, response_model=models.TokenResponse, status_code=status.HTTP_200_OK)
+async def get_new_access_token(user_data: token_dependency, db_session: db_dependency):
+    # If the code enters here, the app was able to obtain the user data from a valid refresh JWT, thanks to the token_dependency
+    # REFRESH TOKENS ROTATION: At this point, the used refresh token is already deleted from the database
+
+    new_access_token = tokens.create_jwt(
+        user_data=user_data,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        db_session=db_session
+    )
+    new_refresh_token = tokens.create_jwt(
+        user_data=user_data,
+        expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        db_session=db_session,
+        is_refresh_token=True
+    )
+    
+    return {
+        'message': 'Valid refresh token',
+        'access_token': new_access_token,
+        'refresh_token': new_refresh_token,
+        'token_type': 'bearer',
+    }
 
