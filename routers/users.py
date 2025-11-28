@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from typing import Annotated
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -45,3 +45,13 @@ async def change_password(user_data: user_dependency, db_session: db_dependency,
     db_session.add(user_model)
     db_session.commit()
 
+@router.put("/change_phone_number", status_code=status.HTTP_204_NO_CONTENT)
+async def change_phone_number(user_data: user_dependency, db_session: db_dependency, body_request: models.UserPhoneValidator):
+    user_model: models.Users | None = db_session.query(models.Users).filter(models.Users.id == user_data.get("user_id")).first()
+
+    if user_model is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user_model.phone_number = body_request.phone_number
+    db_session.add(user_model)
+    db_session.commit()

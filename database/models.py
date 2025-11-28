@@ -38,6 +38,7 @@ class Users(db.Base):
 class UserValidator(BaseModel):
     username: str
     email: str
+    phone_number: str
     first_name: str
     last_name: str
     password: str = Field(min_length=6) # as plain text
@@ -48,6 +49,7 @@ class UserValidator(BaseModel):
             "example": {
                 "username": "evasquez",
                 "email": "elias@test.com",
+                "phone_number": "+1 45 45 45",
                 "first_name": "Elias",
                 "last_name": "Vasquez",
                 "password": "test1234"
@@ -59,6 +61,8 @@ class UserVerification(BaseModel):
     old_password: str
     new_password: str = Field(min_length=6)
 
+class UserPhoneValidator(BaseModel):
+    phone_number: str | None
 
 ### TOKENS ###
 class RefreshTokens(db.Base):
