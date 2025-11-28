@@ -5,11 +5,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI")
+POSTGRESQL_DB_URI = os.getenv("POSTGRESQL_DB_URI")
 
-# We are going to bind this engine to the Base, using Base.metadata.create_all(bind=engine),
-# creating the database todos.db
-engine = create_engine(SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}) # allowing multiple threads to connect to our database
+# engine = create_engine(SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}) # allowing multiple threads to connect to our database
+
+# We are going to bind this engine to the Base, using Base.metadata.create_all(bind=engine), creating the database tables
+# Changing the timezone of the connection in SQLAlchemy to UTC, the reason:
+# - Each PostgreSQL connection has an associated time zone that defaults to the system's time zone
+# - Although the timezone is stored correctly in UTC, if we don't do this, when retrieving the timestamp, it will be
+#   returned as a naive datetime in the system's time zone
+engine = create_engine(POSTGRESQL_DB_URI, connect_args={"options": "-c timezone=UTC"})
 
 # Autocommit dictates whether individual SQL statements are automatically committed to the database.
 # Autoflush dictates whether in-memory object changes are automatically written to the database connection before queries, ensuring data consistency within a transaction.

@@ -65,7 +65,7 @@ class RefreshTokens(db.Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id: int = Column(Integer, ForeignKey('users.id'), index=True)
     refresh_token = Column(String, index=True, unique=True)
-    expires_at = Column(DateTime)
+    expires_at = Column(DateTime(timezone=True))
 
     """
     SQLITE3 SCHEMA:
