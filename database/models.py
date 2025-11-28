@@ -15,6 +15,7 @@ class Users(db.Base):
     is_active = Column(Boolean, default=True)
     # default -> client side (python) | server_default -> server side (database default)
     role = Column(String, default="user") # role: str, TODO: user roles as strings separated by spaces
+    phone_number = Column(String)
 
     """
     SQLITE3 SCHEMA:
