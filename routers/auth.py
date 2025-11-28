@@ -31,7 +31,7 @@ db_dependency: type[Session] = Annotated[Session, Depends(db.get_db)]
 # - Returns the JWT user_data
 # - If the refresh token is not in the database, it is considered INVALID
 # If something is wrong with the JWT, the function will raise an exception that is going to be handled by FastAPI.
-token_dependency: type[dict] = Annotated[dict, Depends(tokens.get_user_from_refresh_token)]
+token_dependency: type[dict] = Annotated[dict, Depends(tokens.get_payload_from_refresh_token)]
 
 
 def authenticate_user(username: str, password: str, db_session: Session) -> models.Users | None:
@@ -109,18 +109,20 @@ async def login_for_access_token(db_session: db_dependency,
     }
 
 @router.get(tokens.REFRESH_URL, response_model=models.TokenResponse, status_code=status.HTTP_200_OK)
-async def get_new_access_token(user_data: token_dependency, db_session: db_dependency):
-    # If the code enters here, the app was able to obtain the user data from a valid refresh JWT, thanks to the token_dependency
+async def get_new_access_token(rt_payload: token_dependency, db_session: db_dependency):
+    # If the code enters here, the app was able to obtain the payload from a valid refresh JWT, thanks to the token_dependency
     # REFRESH TOKENS ROTATION: At this point, the used refresh token is already deleted from the database
 
     new_access_token = tokens.create_jwt(
-        user_data=user_data,
+        user_data=rt_payload.get('user'),
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         db_session=db_session
     )
+
+    # Preventing refresh token's lifetime extension beyond the lifetime of the initial refresh token
     new_refresh_token = tokens.create_jwt(
-        user_data=user_data,
-        expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        user_data=rt_payload.get('user'),
+        previous_expiry=rt_payload.get('exp'),
         db_session=db_session,
         is_refresh_token=True
     )

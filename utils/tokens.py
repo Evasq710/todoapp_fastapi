@@ -38,14 +38,16 @@ def add_jwt_to_db(token: str, user_data: dict, expires_at: datetime, db_session:
     db_session.commit()
 
 
-def delete_jwt_from_db(token: str, db_session: Session):
-    token_model = db_session.query(models.RefreshTokens).filter(models.RefreshTokens.refresh_token == token).first()
+def delete_jwt_from_db(db_session: Session, token: str = "", token_model: type[models.RefreshTokens] | None = None):
+    if token != "":
+        token_model = db_session.query(models.RefreshTokens).filter(models.RefreshTokens.refresh_token == token).first()
+
     if token_model is not None:
         db_session.delete(token_model)
         db_session.commit()
 
 
-def is_valid_refresh_token(refresh_token: str, user_id: int, db_session: Session) -> bool:
+def is_valid_refresh_token(refresh_token: str, user_id: int, db_session: Session) -> type[models.RefreshTokens] | None:
     # Making sure that the refresh token is not blacklisted (if a token is blacklisted, it is not going to be found on the database)
     # The expiration time is validated before this point
     user_tokens: list[type[models.RefreshTokens]] = (db_session.query(models.RefreshTokens)
@@ -53,17 +55,29 @@ def is_valid_refresh_token(refresh_token: str, user_id: int, db_session: Session
                                                      .all())
     for user_token in user_tokens:
         if user_token.refresh_token == refresh_token:
-            return True
-    return False
+            return user_token
+    return None
 
 
-def create_jwt(user_data: dict, expires_delta: timedelta, db_session: Session, is_refresh_token: bool = False) -> str:
+def create_jwt(db_session: Session, user_data: dict, expires_delta: timedelta = None, is_refresh_token: bool = False, previous_expiry: datetime = None) -> str:
+    # Scenarios for JWTs creation:
+    # 1. Access token..........: expires_delta:timedelta
+    # 2. First refresh token...: expires_delta:timedelta, is_refresh_token=True
+    # 3. Refresh token rotation: previous_expiry:timedelta, is_refresh_token=True
+    if (expires_delta is None and previous_expiry is None) or \
+       (expires_delta is not None and previous_expiry is not None) or \
+       (expires_delta is None and is_refresh_token is False):
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Invalid JTW creation")
+
+    # Preventing refresh token's lifetime extension beyond the lifetime of the initial refresh token
+    exp: datetime = datetime.now(timezone.utc) + expires_delta if previous_expiry is None else previous_expiry
+
     # JWT PAYLOAD
     to_encode = {
         # Registered Claims
         'jti': str(uuid.uuid4()), # Universally Unique Identifier (UUID, 128-bit)
         'sub': user_data.get('username', ''),
-        'exp': datetime.now(timezone.utc) + expires_delta,
+        'exp': exp,
         # Custom Claims
         'refresh': is_refresh_token,
         'user': user_data,
@@ -83,7 +97,7 @@ def get_payload_from_jwt(token: str, db_session: Session) -> dict:
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError: # ExpiredSignatureError < DecodeError < InvalidTokenError < PyJWTError
         # If a refresh_token expires, it must be deleted from the database
-        delete_jwt_from_db(token, db_session)
+        delete_jwt_from_db(db_session=db_session, token=token)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate token.")
     except jwt.PyJWTError as err: # PyJWTError < Exception
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Could not validate token. Error: {str(err)}")
@@ -115,7 +129,7 @@ async def get_logged_in_user(access_token: Annotated[str, Depends(oauth2_bearer)
 
 
 # Annotated[str, Depends(oauth2_bearer)] tells the application to get the token in the Authorization: Bearer <token> header
-async def get_user_from_refresh_token(refresh_token: Annotated[str, Depends(oauth2_bearer)], db_session: db_dependency):
+async def get_payload_from_refresh_token(refresh_token: Annotated[str, Depends(oauth2_bearer)], db_session: db_dependency):
     # Making sure that the token is a valid JWT
     try:
         payload = get_payload_from_jwt(refresh_token, db_session)
@@ -130,8 +144,15 @@ async def get_user_from_refresh_token(refresh_token: Annotated[str, Depends(oaut
     if user_data is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
 
-    if is_valid_refresh_token(refresh_token, user_data.get('user_id'), db_session):
-        delete_jwt_from_db(refresh_token, db_session)
-        return user_data
+    rt_object = is_valid_refresh_token(refresh_token, user_data.get('user_id'), db_session)
+
+    if rt_object is not None:
+        # Invalidating the used refresh token by deleting it from the database
+        delete_jwt_from_db(db_session=db_session, token_model=rt_object)
+
+        # TIMESTAMP is decoded as int, so we are changing it to datetime by getting it directly from the refresh token object
+        # This expires_at claim will be used to rotate the refresh token with the same expiration time
+        payload['exp'] = rt_object.expires_at
+        return payload
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="An invalid refresh token was provided")
