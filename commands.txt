@@ -17,3 +17,5 @@ pip install alembic
     - alembic revision -m <message>: Creates a new revision of the environment
     - alembic upgrade <revision_id>: Run our upgrade migration to our database
     - alembic downgrade -1: Run our downgrade migration to our database (Revert a migration)
+
+pip install pytest

@@ -7,6 +7,12 @@ app = FastAPI()
 # This creates $DATABASE_URI database (todosapp.db), using the configuration of db.py & models.py
 db.Base.metadata.create_all(bind=db.engine)
 
+# Health check
+@app.get("/healthy")
+def health_check():
+    return {"status": "Healthy"}
+
+
 # Including routers
 app.include_router(todos.router)
 app.include_router(auth.router)
