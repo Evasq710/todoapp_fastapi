@@ -87,3 +87,15 @@ def logged_in_admin_client(override_get_db, override_get_logged_in_admin):
     # Clear overrides after all tests in the MODULE (thanks to the scope)
     app.dependency_overrides.clear()
 
+# Every TEST FUNCTION will have a fresh logged in TestClient
+@pytest.fixture(scope="function")
+def client(override_get_db):
+    app.dependency_overrides[db.get_db] = lambda: override_get_db
+
+    # At this point, our application has the new references for its dependencies
+    # Returning a test client
+    with TestClient(app) as cl:
+        yield cl
+
+    # Clear overrides after all tests in the MODULE (thanks to the scope)
+    app.dependency_overrides.clear()
