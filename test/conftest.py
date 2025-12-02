@@ -22,8 +22,12 @@ FIXTURE SCOPES
 # If needed, will be executed only once for the entire TEST SESSION, returning always the same dictionary
 # This functions mocks the get_logged_in_user function that looks for a valid JWT on the Authorization header
 @pytest.fixture(scope="session")
-def override_get_logged_in_user():
+def override_get_logged_in_admin():
     return {'username': 'evasq', 'user_id': 1, 'user_role': 'admin'}
+
+@pytest.fixture(scope="session")
+def override_get_logged_in_user():
+    return {'username': 'evasq', 'user_id': 1, 'user_role': 'user'}
 
 # Every TEST FILE will have a fresh test database at the beginning of its execution
 @pytest.fixture(scope="module")
@@ -62,3 +66,24 @@ def logged_in_client(override_get_db, override_get_logged_in_user):
 
     # Clear overrides after all tests in the MODULE (thanks to the scope)
     app.dependency_overrides.clear()
+
+# Every TEST FUNCTION will have a fresh logged in TestClient
+@pytest.fixture(scope="function")
+def logged_in_admin_client(override_get_db, override_get_logged_in_admin):
+    # If we were to do this override outside the fixture, override_get_db is already a function, so we can do a direct override:
+    # > app.dependency_overrides[db.get_db] = override_get_db
+
+    # Doing this inside the fixture, override_get_db and override_get_logged_in_admin functions were already called
+    # We use lambda so we can override a function with another one
+    app.dependency_overrides[db.get_db] = lambda: override_get_db
+    app.dependency_overrides[tokens.get_logged_in_user] = lambda: override_get_logged_in_admin
+
+    # At this point, our application has the new references for its dependencies
+
+    # Returning a test client
+    with TestClient(app) as cl:
+        yield cl
+
+    # Clear overrides after all tests in the MODULE (thanks to the scope)
+    app.dependency_overrides.clear()
+
