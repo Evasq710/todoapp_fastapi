@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from database import db
 from routers import auth, todos, admin, users
 
@@ -9,8 +10,13 @@ app = FastAPI()
 db.Base.metadata.create_all(bind=db.engine)
 
 # Frontend Setup
+templates = Jinja2Templates(directory="templates")
 # "Mounting" means adding a complete "independent" application in a specific path. The OpenAPI and docs won't include anything from here
 app.mount(path="/static", app=StaticFiles(directory="static"), name="static_files")
+
+@app.get("/")
+def test(req: Request):
+    return templates.TemplateResponse("home.html" , {"request": req})
 
 # Health check
 @app.get("/healthy")
