@@ -55,7 +55,6 @@ async def create_user(db_session: db_dependency, user_validator: models.UserVali
         db_session.commit()
     except IntegrityError as err:
         db_session.rollback()
-        print('Integrity Error:', str(err))
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already exists!")
     except Exception as err:
         db_session.rollback()
