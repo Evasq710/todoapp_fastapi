@@ -18,13 +18,17 @@ app.mount(path="/static", app=StaticFiles(directory="static"), name="static_file
 def test(req: Request):
     return templates.TemplateResponse("home.html" , {"request": req})
 
+@app.get("/login-page")
+def render_login_page(req: Request):
+    return templates.TemplateResponse("login.html", {"request": req})
+
 # Health check
 @app.get("/healthy")
 def health_check():
     return {"status": "Healthy"}
 
 
-# Including routers
+# Including backend routers
 app.include_router(todos.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
