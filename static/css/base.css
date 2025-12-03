@@ -1,3 +1,23 @@
-h1 {
-    color: red;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box; /* Ensures padding and border are included in element's total width and height */
+}
+
+body {
+    background: #fafafa;
+    color: #33333a;
+    padding-top: 70px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #323232;
+}
+
+.main-color {
+    background-color: #0e76a8;
+}
+
+.strike-through-td {
+    text-decoration: line-through;
 }
