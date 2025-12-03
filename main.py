@@ -22,6 +22,10 @@ def test(req: Request):
 def render_login_page(req: Request):
     return templates.TemplateResponse("login.html", {"request": req})
 
+@app.get("/register-page")
+def render_register_page(req: Request):
+    return templates.TemplateResponse("register.html", {"request": req})
+
 # Health check
 @app.get("/healthy")
 def health_check():

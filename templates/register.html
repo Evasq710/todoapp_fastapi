@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                Register
+            </div>
+            <div class="card-body">
+                <form id="registerForm">
+                    <div class="row mb-3">
+                        <div class="form-group col-md-6">
+                            <label for="email">Email</label>
+                            <input type="email" name="email" id="email" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="username">Username</label>
+                            <input type="text" name="username" id="username" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="form-group col-md-6">
+                            <label for="firstname">First Name</label>
+                            <input type="text" name="firstname" id="firstname" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="lastname">Last Name</label>
+                            <input type="text" name="lastname" id="lastname" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="form-group col-md-6">
+                            <label for="role">Role</label>
+                            <input type="text" name="role" id="role" class="form-control" required>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="phone_number">Phone Number</label>
+                            <input type="text" name="phone_number" id="phone_number" autocomplete="phone_number" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" class="form-control" autocomplete="password" required>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="verification">Verify Password</label>
+                        <input type="password" name="verification" id="verification" class="form-control" autocomplete="password" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
+                </form>
+            </div>
+            <div class="card-footer text-muted">
+                <a href="/login-page">Already have an account? Sign in</a>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}
