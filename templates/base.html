@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!--
+    For proper responsive behavior
+        - width: Controls the minimum pixel width of the viewport (establishes the value of the 'vw' unit)
+            - device-width: the physical size of the device screen in CSS pixels
+        - initial-scale: Ratio between the device width and the viewport size
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>{% block title %}TodoApp{% endblock %}</title>
+
+    <!-- Custom CSS-->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static_files', path='/css/base.css') }}" />
+    <!--Bootstrap CSS-->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <!--Bootstrap JS-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
