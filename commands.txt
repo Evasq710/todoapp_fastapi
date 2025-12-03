@@ -2,12 +2,25 @@ python -m venv <.venv-folder-name>
 source .venv/bin/activate
 
 pip install 'fastapi[standard]'
+> The key libraries included in the "standard" extra are:
+    - Uvicorn: An ASGI server implementation for running the FastAPI app
+    - Pydantic: A data validation and settings management library. "email-validator" (a dependency of Pydantic) is also included
+    - python-multipart: Required for parsing form data, including file uploads
+    - Jinja2: A popular templating engine for rendering HTML templates
+    - python-jose: A library for handling JSON Object Signing and Encryption (JOSE), often used for JWTs (see pyjwt[crypt])
+    - passlib: Provides secure password hashing functionality
+    - SQLAlchemy: A powerful Object-Relational Mapper (ORM) for interacting with databases.
+    - asyncpg: An asynchronous PostgreSQL driver for use with SQLAlchemy
+    - databases: A library providing asynchronous database support, often used with SQLAlchemy
+    - fastapi-cloud-cli: A commnand-line interface for deploying FastAPI applications to FastAPI Cloud
+
+
 pip install 'uvicorn[standard]'
 pip install sqlalchemy
 pip install passlib
 pip install bcrypt==4.0.1
 pip install python-multipart # check if it isn't already installed
-pip install 'pyjwt[crypto]'
+pip install 'pyjwt[crypto]' # Instead of python-jose
 pip install psycopg2-binary
 pip install pymysql
 
@@ -19,3 +32,6 @@ pip install alembic
     - alembic downgrade -1: Run our downgrade migration to our database (Revert a migration)
 
 pip install pytest
+
+# FRONTEND (check if these aren't already installed)
+pip install jinja2
