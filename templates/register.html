@@ -58,5 +58,12 @@
 
 
 {% block script_extra %}
-    <script src="{{ url_for('static_files', path='/js/register.js') }}" defer></script>
+    <!--
+        The script tag with type="module" is used to include a JS MODULE in a web page.
+        This attribute instructs the browser to treat the script as an ECMAScript module (ESM),
+        which enables features like `import`and `export` statements.
+        These modules are deferred by default.
+        Only the main entry point script (the one that handles all imports) should be included here.
+    -->
+    <script type="module" src="{{ url_for('static_files', path='/js/register.js') }}" defer></script>
 {% endblock %}
