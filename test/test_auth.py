@@ -35,21 +35,30 @@ def test_login_tokens(client: TestClient):
 
     json_response = response.json()
     assert response.status_code == status.HTTP_200_OK
+    assert response.cookies.get("refresh_token") is not None
     assert json_response.get("access_token") is not None
-    assert json_response.get("refresh_token") is not None
     assert json_response.get("token_type") == "bearer"
 
-    user["refresh_token"] = json_response["refresh_token"]
     user["access_token"] = json_response["access_token"]
 
-def test_new_access_token(client: TestClient):
-    response = client.get("/auth/refresh", headers={"Authorization": f"Bearer {user.get('refresh_token')}"})
+def test_non_authenticated_user(client: TestClient):
+    response = client.get("/user/")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    json_response = response.json()
+def test_authenticated_user(client: TestClient):
+    response = client.get("/user/", headers={"Authorization": f"Bearer {user['access_token']}"})
     assert response.status_code == status.HTTP_200_OK
-    assert json_response.get("access_token") is not None
-    assert json_response.get("refresh_token") is not None
-    assert json_response.get("token_type") == "bearer"
 
-    user["refresh_token"] = json_response["refresh_token"]
-    user["access_token"] = json_response["access_token"]
+    assert response.json().get("username") == user.get("username")
+    assert response.json().get("first_name") == user.get("first_name")
+    assert response.json().get("last_name") == user.get("last_name")
+
+def test_logout_(client: TestClient):
+    body = {"username": user.get("username"), "password": user.get("password")}
+    response = client.post("/auth/login", data=body)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.cookies.get("refresh_token") is not None
+
+    response = client.delete("/auth/refresh")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.cookies.get("refresh_token") is None

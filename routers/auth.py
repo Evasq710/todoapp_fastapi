@@ -173,3 +173,12 @@ async def get_new_access_token(response: Response, rt_payload: token_dependency,
         'token_type': 'bearer',
     }
 
+# FIXME! If the refresh_token cookie is not found, this will raise an HTTPException with 401 code. Is this ok?
+@router.delete(tokens.REFRESH_URL, status_code=status.HTTP_200_OK)
+async def logout(response: Response, rt_payload: token_dependency):
+    # If the code enters here, the app was able to obtain the payload from a valid refresh JWT, thanks to the token_dependency
+    # At this point, the used refresh token is already deleted from the database
+
+    response.delete_cookie(key='refresh_token', path="/")
+
+    return {'detail': 'Logged out'}
