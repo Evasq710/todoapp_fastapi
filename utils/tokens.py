@@ -1,7 +1,7 @@
 import os, uuid, jwt
-from typing import Annotated
+from typing import Annotated, Union
 from datetime import timedelta, datetime, timezone
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Cookie, Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from database import db, models
@@ -59,7 +59,7 @@ def is_valid_refresh_token(refresh_token: str, user_id: int, db_session: Session
     return None
 
 
-def create_jwt(db_session: Session, user_data: dict, expires_delta: timedelta = None, is_refresh_token: bool = False, previous_expiry: datetime = None) -> str:
+def create_jwt(db_session: Session, user_data: dict, expires_delta: timedelta = None, is_refresh_token: bool = False, previous_expiry: datetime = None) -> str | tuple[str, datetime]:
     # Scenarios for JWTs creation:
     # 1. Access token..........: expires_delta:timedelta
     # 2. First refresh token...: expires_delta:timedelta, is_refresh_token=True
@@ -88,6 +88,8 @@ def create_jwt(db_session: Session, user_data: dict, expires_delta: timedelta = 
     # Adding refresh token to database
     if is_refresh_token:
         add_jwt_to_db(token=new_jwt, user_data=user_data, expires_at=to_encode.get('exp'), db_session=db_session)
+        # Returning the RT and its expiration datetime, in order to add it to the http-only cookie
+        return new_jwt, exp
 
     return new_jwt
 
@@ -128,8 +130,14 @@ async def get_logged_in_user(access_token: Annotated[str, Depends(oauth2_bearer)
     }
 
 
-# Annotated[str, Depends(oauth2_bearer)] tells the application to get the token in the Authorization: Bearer <token> header
-async def get_payload_from_refresh_token(refresh_token: Annotated[str, Depends(oauth2_bearer)], db_session: db_dependency):
+# refresh_token: Annotated[Union[str, None], Cookie()] = None
+#   - Reads a cookie named 'refresh_token' from the request
+#   - If the cookie is not present, refresh_token will be None
+async def get_payload_from_refresh_token(response: Response, db_session: db_dependency, refresh_token: Annotated[Union[str, None], Cookie()] = None):
+    # Making sure that the 'refresh_token' cookie exists
+    if refresh_token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
+
     # Making sure that the token is a valid JWT
     try:
         payload = get_payload_from_jwt(refresh_token, db_session)
@@ -155,4 +163,15 @@ async def get_payload_from_refresh_token(refresh_token: Annotated[str, Depends(o
         payload['exp'] = rt_object.expires_at
         return payload
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="An invalid refresh token was provided")
+    # At this point:
+    # - A valid REFRESH TOKEN was received from the 'refresh_token' cookie
+    # - The token is not listed as a valid JWT in our database (rt_object is None)
+    # - This could happen if we explicitly delete a refresh token to invalidate it
+    # - Deleting the http-only cookie:
+    response.delete_cookie(key='refresh_token', path="/")
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="An invalid refresh token was provided",
+        headers={"Set-Cookie": response.headers.get('set-Cookie')},
+    )

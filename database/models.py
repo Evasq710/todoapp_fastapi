@@ -91,7 +91,6 @@ class RefreshTokens(db.Base):
 class TokenResponse(BaseModel):
     message: str
     access_token: str
-    refresh_token: str
     token_type: str
 
 
