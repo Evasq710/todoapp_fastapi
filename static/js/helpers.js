@@ -26,3 +26,34 @@ export const validErrorData = (errorData) => {
     }
     return true;
 }
+
+export const loggedInNavbar = () => {
+
+    const navBar = document.getElementById('navbarNav');
+
+    const a1 = document.createElement('a');
+    a1.className = 'nav-link';
+    a1.href = '/todos-page';
+    a1.textContent = 'Home';
+    const li1 = document.createElement('li');
+    li1.className = 'nav-item active';
+    li1.appendChild(a1);
+    const ul1 = document.createElement('ul');
+    ul1.className = 'navbar-nav';
+    ul1.appendChild(li1);
+
+    const a2 = document.createElement('a');
+    a2.className = 'btn btn-outline-light text-white';
+    a2.type = 'button';
+    a2.onclick = console.log;
+    a2.textContent = 'Logout';
+    const li2 = document.createElement('li');
+    li2.className = 'nav-item m-1';
+    li2.appendChild(a2);
+    const ul2 = document.createElement('ul');
+    ul2.className = 'navbar-nav ml-auto';
+    ul2.appendChild(li2);
+
+    navBar.appendChild(ul1);
+    navBar.appendChild(ul2);
+}

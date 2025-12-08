@@ -1,3 +1,4 @@
+import {loggedInNavbar} from "./helpers.js";
 
 window.addEventListener('DOMContentLoaded', async (e) => {
     try {
@@ -24,6 +25,7 @@ window.addEventListener('DOMContentLoaded', async (e) => {
         if (response.ok){
             // Valid access Token (either and old token or a new one). We were able to get user's todos
             createTodosTable(responseData);
+            loggedInNavbar();
             return;
         }
 
