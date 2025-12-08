@@ -35,3 +35,5 @@ pip install pytest
 
 # FRONTEND (check if these aren't already installed)
 pip install jinja2
+
+pip freeze > requirements.txt
