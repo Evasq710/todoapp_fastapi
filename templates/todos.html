@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="container">
+        <div class="card text-center">
+            <div class="card-header">
+                Your Todos!
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">
+                    List of your Todos!
+                </h5>
+                <p class="card-text">
+                    Information regarding stuff that needs to be completed
+                </p>
+
+                <table class="table table-hover" id="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Info</th>
+                            <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <a href="add-todo-page" class="btn btn-primary">Add a new Todo!</a>
+
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block script_extra %}
+    <!--
+        The script tag with type="module" is used to include a JS MODULE in a web page.
+        This attribute instructs the browser to treat the script as an ECMAScript module (ESM),
+        which enables features like `import`and `export` statements.
+        These modules are deferred by default.
+        Only the main entry point script (the one that handles all imports) should be included here.
+    -->
+    <script type="module" src="{{ url_for('static_files', path='/js/todos.js') }}"></script>
+{% endblock %}

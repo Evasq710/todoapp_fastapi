@@ -31,6 +31,10 @@ def render_register_page(req: Request):
 def health_check():
     return {"status": "Healthy"}
 
+@app.get("/todos-page")
+def render_todos_page(req: Request):
+    return templates.TemplateResponse("todos.html", {"request": req})
+
 
 # Including backend routers
 app.include_router(todos.router)
